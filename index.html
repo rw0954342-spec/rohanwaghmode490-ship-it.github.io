@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Hindi Male Voice Studio</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#07111f;
+    color:#fff;
+}
+
+.container{
+    max-width:850px;
+    margin:auto;
+    padding:18px;
+}
+
+.header{
+    background:#101e32;
+    border:1px solid #29415f;
+    border-radius:20px;
+    padding:22px;
+    margin-bottom:18px;
+}
+
+h1{margin:0 0 7px}
+
+.sub{
+    color:#9fb0c7;
+}
+
+.card{
+    background:#0f1c2e;
+    border:1px solid #29415f;
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:18px;
+}
+
+label{
+    display:block;
+    margin:12px 0 7px;
+    color:#cbd5e1;
+}
+
+textarea{
+    width:100%;
+    min-height:200px;
+    padding:15px;
+    border-radius:13px;
+    border:1px solid #38516f;
+    background:#07111f;
+    color:white;
+    font-size:17px;
+    line-height:1.6;
+    resize:vertical;
+}
+
+select{
+    width:100%;
+    padding:13px;
+    border-radius:10px;
+    background:#07111f;
+    color:white;
+    border:1px solid #38516f;
+}
+
+.voice{
+    margin-top:15px;
+    padding:16px;
+    border:2px solid #22d3ee;
+    border-radius:14px;
+    background:#10283b;
+}
+
+.voice-title{
+    font-size:18px;
+    font-weight:bold;
+}
+
+.voice-name{
+    color:#9fb0c7;
+    font-size:13px;
+    margin-top:6px;
+}
+
+button{
+    width:100%;
+    border:0;
+    border-radius:11px;
+    padding:14px;
+    margin-top:10px;
+    color:white;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.speak{background:#16a34a}
+.stop{background:#dc2626}
+.record{background:#7c3aed}
+.download{background:#2563eb}
+
+.download:disabled{
+    opacity:.35;
+    cursor:not-allowed;
+}
+
+.status{
+    margin-top:15px;
+    padding:13px;
+    background:#07111f;
+    border:1px solid #29415f;
+    border-radius:10px;
+    color:#a7f3d0;
+    line-height:1.5;
+}
+
+audio{
+    width:100%;
+    margin-top:12px;
+}
+
+.file{
+    padding:13px;
+    margin-top:10px;
+    background:#091625;
+    border:1px solid #29415f;
+    border-radius:10px;
+}
+
+@media(max-width:600px){
+    .container{padding:10px}
+    .card{padding:15px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>🎙️ Hindi Voice Studio</h1>
+    <div class="sub">
+        Indian Hindi Male Voice • Record • Download
+    </div>
+</div>
+
+
+<div class="card">
+
+<label>Hindi Script</label>
+
+<textarea id="text">नमस्ते! यह हमारी हिंदी वॉइस टेस्टिंग है। अगर आपको यह आवाज़ सुनाई दे रही है, तो हमारा वॉइस सिस्टम काम कर रहा है। अब हम इस आवाज़ को रिकॉर्ड करने की कोशिश करेंगे।</textarea>
+
+
+<label>Language</label>
+
+<select id="language">
+    <option value="hi-IN">Hindi — India</option>
+</select>
+
+
+<label>Speaking Speed</label>
+
+<select id="speed">
+    <option value="0.75">0.75x</option>
+    <option value="0.9">0.90x</option>
+    <option value="1" selected>1.00x Natural</option>
+    <option value="1.1">1.10x</option>
+    <option value="1.2">1.20x</option>
+</select>
+
+
+<div class="voice">
+
+    <div class="voice-title">
+        🇮🇳 Indian Hindi Male
+    </div>
+
+    <div id="voiceName" class="voice-name">
+        Voice खोजी जा रही है...
+    </div>
+
+</div>
+
+
+<button class="speak" onclick="speakText()">
+    ▶️ Speak Hindi Voice
+</button>
+
+
+<button class="stop" onclick="stopVoice()">
+    ⏹ Stop Voice
+</button>
+
+
+<button class="record" onclick="startRecording()">
+    🔴 Start Audio Recording
+</button>
+
+
+<button class="stop" onclick="stopRecording()">
+    ⏹ Stop Recording
+</button>
+
+
+<div id="status" class="status">
+    Voice system starting...
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h2>🎵 Your Recording</h2>
+
+<audio id="player" controls></audio>
+
+<button id="downloadBtn"
+        class="download"
+        disabled
+        onclick="downloadRecording()">
+    ⬇️ Download Recording
+</button>
+
+<div id="downloadStatus" class="status">
+    अभी कोई recording नहीं है।
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h2>📁 Audio Library</h2>
+
+<div id="library">
+    अभी कोई audio नहीं है।
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+let voices=[];
+let selectedVoice=null;
+
+let mediaRecorder=null;
+let chunks=[];
+let recordingBlob=null;
+let recordingURL=null;
+
+
+/* =========================
+   VOICE DETECTION
+========================= */
+
+function findVoice(){
+
+    if(!("speechSynthesis" in window)){
+        document.getElementById("voiceName").textContent=
+        "Browser speech support नहीं करता।";
+        return;
+    }
+
+    voices=speechSynthesis.getVoices();
+
+    if(!voices.length){
+        document.getElementById("voiceName").textContent=
+        "Voices अभी load हो रही हैं...";
+        return;
+    }
+
+    const hindiVoices=voices.filter(v=>{
+        return v.lang &&
+        v.lang.toLowerCase().startsWith("hi");
+    });
+
+    /*
+      Browser gender information नहीं देता।
+      इसलिए male नाम को सिर्फ preference के रूप में खोज रहे हैं।
+    */
+
+    const maleVoice=hindiVoices.find(v=>{
+        return /male|madhur|hemant|ravi|amit|raj|ramesh/i
+        .test(v.name);
+    });
+
+    selectedVoice=maleVoice || hindiVoices[0] || null;
+
+    if(selectedVoice){
+
+        document.getElementById("voiceName").textContent=
+        selectedVoice.name+
+        " — "+
+        selectedVoice.lang;
+
+    }else{
+
+        document.getElementById("voiceName").textContent=
+        "Hindi voice इस device में उपलब्ध नहीं मिली।";
+
+    }
+}
+
+
+findVoice();
+
+if("onvoiceschanged" in speechSynthesis){
+    speechSynthesis.onvoiceschanged=findVoice;
+}
+
+setTimeout(findVoice,1000);
+setTimeout(findVoice,3000);
+
+
+/* =========================
+   SPEAK
+========================= */
+
+function speakText(){
+
+    if(!("speechSynthesis" in window)){
+
+        showStatus(
+        "❌ इस browser में SpeechSynthesis उपलब्ध नहीं है।"
+        );
+
+        return;
+    }
+
+    const text=
+    document.getElementById("text").value.trim();
+
+    if(!text){
+
+        showStatus(
+        "⚠️ पहले Hindi script लिखें।"
+        );
+
+        return;
+    }
+
+    speechSynthesis.cancel();
+
+    findVoice();
+
+    const utterance=
+    new SpeechSynthesisUtterance(text);
+
+    utterance.lang="hi-IN";
+
+    if(selectedVoice){
+        utterance.voice=selectedVoice;
+    }
+
+    utterance.rate=
+    Number(document.getElementById("speed").value);
+
+    utterance.pitch=0.85;
+
+    utterance.volume=1;
+
+
+    utterance.onstart=function(){
+
+        showStatus(
+        "🔊 Hindi voice बोल रही है..."
+        );
+
+    };
+
+
+    utterance.onend=function(){
+
+        showStatus(
+        "✅ Voice finished."
+        );
+
+    };
+
+
+    utterance.onerror=function(e){
+
+        showStatus(
+        "❌ Voice error: "+e.error
+        );
+
+    };
+
+
+    speechSynthesis.speak(utterance);
+}
+
+
+/* =========================
+   STOP VOICE
+========================= */
+
+function stopVoice(){
+
+    if("speechSynthesis" in window){
+
+        speechSynthesis.cancel();
+
+        showStatus(
+        "⏹ Voice stopped."
+        );
+
+    }
+}
+
+
+/* =========================
+   RECORDING
+========================= */
+
+async function startRecording(){
+
+    /*
+      Browser से audio capture करने के लिए
+      microphone permission माँगी जाती है।
+
+      IMPORTANT:
+      SpeechSynthesis का audio हर browser में
+      MediaRecorder को नहीं मिलता।
+    */
+
+    if(!navigator.mediaDevices ||
+       !navigator.mediaDevices.getUserMedia){
+
+        showStatus(
+        "❌ इस browser में audio recording support नहीं है।"
+        );
+
+        return;
+    }
+
+
+    try{
+
+        const stream=
+        await navigator.mediaDevices.getUserMedia({
+            audio:true
+        });
+
+
+        chunks=[];
+
+
+        mediaRecorder=
+        new MediaRecorder(stream);
+
+
+        mediaRecorder.ondataavailable=function(event){
+
+            if(event.data.size>0){
+                chunks.push(event.data);
+            }
+
+        };
+
+
+        mediaRecorder.onstop=function(){
+
+            recordingBlob=
+            new Blob(
+                chunks,
+                {type:"audio/webm"}
+            );
+
+
+            if(recordingURL){
+                URL.revokeObjectURL(recordingURL);
+            }
+
+
+            recordingURL=
+            URL.createObjectURL(recordingBlob);
+
+
+            const player=
+            document.getElementById("player");
+
+            player.src=recordingURL;
+
+
+            document.getElementById("downloadBtn")
+            .disabled=false;
+
+
+            document.getElementById("downloadStatus")
+            .innerHTML=
+            "✅ Recording तैयार है। Download दबाएँ।";
+
+
+            addToLibrary(
+            recordingURL,
+            recordingBlob.size
+            );
+
+
+            stream.getTracks().forEach(track=>{
+                track.stop();
+            });
+
+        };
+
+
+        mediaRecorder.start();
+
+
+        showStatus(
+        "🔴 Recording शुरू है। अब Speak Hindi Voice दबाएँ।"
+        );
+
+
+    }catch(error){
+
+        showStatus(
+        "❌ Microphone permission नहीं मिली: "+
+        error.message
+        );
+
+    }
+
+}
+
+
+/* =========================
+   STOP RECORDING
+========================= */
+
+function stopRecording(){
+
+    if(mediaRecorder &&
+       mediaRecorder.state!=="inactive"){
+
+        mediaRecorder.stop();
+
+        showStatus(
+        "⏳ Recording तैयार की जा रही है..."
+        );
+
+    }else{
+
+        showStatus(
+        "कोई active recording नहीं है।"
+        );
+
+    }
+}
+
+
+/* =========================
+   DOWNLOAD
+========================= */
+
+function downloadRecording(){
+
+    if(!recordingBlob ||
+       !recordingURL){
+
+        showStatus(
+        "⚠️ पहले recording बनाइए।"
+        );
+
+        return;
+    }
+
+
+    const link=
+    document.createElement("a");
+
+    link.href=recordingURL;
+
+    link.download=
+    "hindi-male-voice-"+
+    Date.now()+
+    ".webm";
+
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+
+    showStatus(
+    "⬇️ Recording download शुरू हो गया।"
+    );
+}
+
+
+/* =========================
+   LIBRARY
+========================= */
+
+function addToLibrary(url,size){
+
+    const library=
+    document.getElementById("library");
+
+
+    if(library.innerHTML.includes(
+        "अभी कोई audio नहीं है"
+    )){
+        library.innerHTML="";
+    }
+
+
+    const item=
+    document.createElement("div");
+
+    item.className="file";
+
+
+    const sizeMB=
+    (size/1024/1024).toFixed(2);
+
+
+    item.innerHTML=
+    "🎵 Hindi Male Voice Recording<br>"+
+    "<span style='color:#94a3b8;font-size:12px'>"+
+    sizeMB+
+    " MB</span>";
+
+
+    const play=
+    document.createElement("button");
+
+    play.textContent="▶️ Play";
+
+    play.style.background="#16a34a";
+
+
+    play.onclick=function(){
+
+        const audio=
+        new Audio(url);
+
+        audio.play();
+
+    };
+
+
+    item.appendChild(play);
+
+    library.prepend(item);
+}
+
+
+/* =========================
+   STATUS
+========================= */
+
+function showStatus(message){
+
+    document.getElementById("status")
+    .innerHTML=message;
+}
+
+</script>
+
+</body>
+</html>
